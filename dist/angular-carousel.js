@@ -1,6 +1,6 @@
 /**
  * Angular Carousel - Mobile friendly touch carousel for AngularJS
- * @version v0.1.3 - 2014-01-06
+ * @version v0.1.4 - 2014-01-06
  * @link http://revolunet.github.com/angular-carousel
  * @author Julien Bouquillon <julien@revolunet.com>
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -15,7 +15,22 @@ http://github.com/revolunet/angular-carousel
 
 angular.module('angular-carousel', [
     'ngTouch'
-]);
+]).config(['$provide', function($provide) {
+  $provide.decorator('$rootScope', ['$delegate', function($delegate) {
+    $delegate.safeApply = function(fn) {
+      var phase = $delegate.$$phase;
+      if (phase === "$apply" || phase === "$digest") {
+        if (fn && typeof fn === 'function') {
+          fn();
+        }
+      } else {
+        $delegate.$apply(fn);
+      }
+    };
+
+    return $delegate;
+  }]);
+}]);
 
 angular.module('angular-carousel')
 
@@ -38,7 +53,7 @@ angular.module('angular-carousel')
 
     angular.module('angular-carousel')
 
-    .directive('rnCarousel', ['$swipe', '$window', '$document', '$parse', '$compile', function($swipe, $window, $document, $parse, $compile) {
+    .directive('rnCarousel', ['$swipe', '$window', '$document', '$parse', '$compile', '$rootScope', function($swipe, $window, $document, $parse, $compile, $rootScope) {
         // internal ids to allow multiple instances
         var carouselId = 0,
             // used to compute the sliding speed
@@ -262,13 +277,7 @@ angular.module('angular-carousel')
                         updateBufferIndex();
                         // if outside of angular scope, trigger angular digest cycle
                         // use local digest only for perfs if no index bound
-                        if (scope.$$phase!=='$apply' && scope.$$phase!=='$digest') {
-                            if (isIndexBound) {
-                                scope.$apply();
-                            } else {
-                                scope.$digest();
-                            }
-                        }
+                        $rootScope.safeApply();
                         scroll();
                     }
 
