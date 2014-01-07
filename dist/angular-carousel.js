@@ -1,6 +1,6 @@
 /**
  * Angular Carousel - Mobile friendly touch carousel for AngularJS
- * @version v0.1.4 - 2014-01-06
+ * @version v0.1.5 - 2014-01-07
  * @link http://revolunet.github.com/angular-carousel
  * @author Julien Bouquillon <julien@revolunet.com>
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -54,6 +54,19 @@ angular.module('angular-carousel')
     angular.module('angular-carousel')
 
     .directive('rnCarousel', ['$swipe', '$window', '$document', '$parse', '$compile', '$rootScope', function($swipe, $window, $document, $parse, $compile, $rootScope) {
+
+        // helps with full screen width detection
+        var ua = $window.navigator.userAgent.toLowerCase();
+        var IS_LEGACY_ANDROID = false;
+        var IS_ANDROID = ua.match(/android/i);
+        if (IS_ANDROID) {
+            var types = ua.match(/android ([\d\.]+)/)[1].split(".");
+            if (types) {
+                var majorVersion = Number(types[0]);
+                IS_LEGACY_ANDROID = majorVersion < 4;
+            }
+        }
+
         // internal ids to allow multiple instances
         var carouselId = 0,
             // used to compute the sliding speed
@@ -195,13 +208,25 @@ angular.module('angular-carousel')
                     }
 
                     function getCarouselWidth() {
-                       // container.css('width', 'auto');
-                        var slides = carousel.children();
-                        if (slides.length === 0) {
-                            containerWidth = carousel[0].getBoundingClientRect().width;
-                        } else {
-                            containerWidth = slides[0].getBoundingClientRect().width;
+                        // container.css('width', 'auto');
+                        //var slides = carousel.children();
+
+                        // custom for infowrap
+                        // carousel is always full screen width
+                        containerWidth = 0;
+                        if (IS_LEGACY_ANDROID) {
+                            containerWidth = document.width;
                         }
+
+                        if (containerWidth == 0 || typeof containerWidth == 'undefined'){
+                          containerWidth = $(window).outerWidth(true);
+                        }
+
+                        // if (slides.length === 0) {
+                        //     containerWidth = carousel[0].getBoundingClientRect().width;
+                        // } else {
+                        //     containerWidth = slides[0].getBoundingClientRect().width;
+                        // }
                         // console.log('getCarouselWidth', containerWidth);
                         return Math.floor(containerWidth);
                     }
@@ -341,6 +366,9 @@ angular.module('angular-carousel')
                         //console.log('swipeEnd', 'scope.carouselIndex', scope.carouselIndex);
                         $document.unbind('mouseup', documentMouseUpEvent);
                         pressed = false;
+                        if (scope.carouselIndex+1 >= slidesCount) {
+                            $rootScope.$emit('carousel:loadMore');
+                        }
 
                         destination = offset;
 

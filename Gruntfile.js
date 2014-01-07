@@ -114,7 +114,7 @@ module.exports = function(grunt) {
         files: ['test/unit/**'],
         tasks: ['karma:unit:run']
       }
-      
+
     }
   });
 
@@ -133,5 +133,7 @@ module.exports = function(grunt) {
 
   // Default task.
   grunt.registerTask('default', ['build', 'connect', 'karma:unit', 'watch']);
+
+  grunt.registerTask('server', ['connect', 'watch']);
 
 };
