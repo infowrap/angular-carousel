@@ -70,11 +70,6 @@
                     }
                     return true;
                 });
-                if (!isRepeatBased) {
-                    // basic template based carousel
-                    var liChilds = tElement.children();
-                    slidesCount = tElement.children().length;
-                }
 
                 return function(scope, iElement, iAttributes, containerCtrl) {
 
@@ -87,6 +82,7 @@
                         amplitude,
                         offset = 0,
                         destination,
+                        slidesCount = 0,
                         // javascript based animation easing
                         timestamp;
 
@@ -147,6 +143,7 @@
                             goToSlide(scope.carouselIndex);
                         });
                     } else {
+                        slidesCount = iElement.children().length;
                         updateContainerWidth();
                     }
 
@@ -183,6 +180,7 @@
 
                     function updateContainerWidth() {
                         // force the carousel container width to match the first slide width
+                        container.css('width', '100%');
                         container.css('width', getCarouselWidth() + 'px');
                     }
 
@@ -326,8 +324,15 @@
                             currentOffset = (scope.carouselIndex * containerWidth),
                             absMove = currentOffset - destination,
                             slidesMove = -Math[absMove>=0?'ceil':'floor'](absMove / containerWidth),
-                            shouldMove = Math.abs(absMove) > minMove,
-                            moveOffset = shouldMove?slidesMove:0;
+                            shouldMove = Math.abs(absMove) > minMove;
+
+                        if ((slidesMove + scope.carouselIndex) >= slidesCount ) {
+                            slidesMove = slidesCount - 1 - scope.carouselIndex;
+                        }
+                        if ((slidesMove + scope.carouselIndex) < 0) {
+                            slidesMove = -scope.carouselIndex;
+                        }
+                        var moveOffset = shouldMove?slidesMove:0;
 
                         destination = (moveOffset + scope.carouselIndex) * containerWidth;
                         amplitude = destination - offset;
@@ -353,8 +358,11 @@
                         }
                     });
 
-                    // initialise first slide
-                    goToSlide(scope.carouselIndex);
+                    // initialise first slide only if no binding
+                    // if so, the binding will trigger the first init
+                    if (!isIndexBound) {
+                        goToSlide(scope.carouselIndex);
+                    }
 
                     // detect supported CSS property
                     transformProperty = 'transform';
@@ -375,12 +383,12 @@
                     // handle orientation change
                     var winEl = angular.element($window);
                     winEl.bind('orientationchange', onOrientationChange);
-                    //winEl.bind('resize', onOrientationChange);
+                    winEl.bind('resize', onOrientationChange);
 
                     scope.$on('$destroy', function() {
                         $document.unbind('mouseup', documentMouseUpEvent);
                         winEl.unbind('orientationchange', onOrientationChange);
-                      //  winEl.unbind('resize', onOrientationChange);
+                        winEl.unbind('resize', onOrientationChange);
                     });
 
                 };
