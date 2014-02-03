@@ -166,7 +166,7 @@
                         }
 
                         if (containerWidth == 0 || typeof containerWidth == 'undefined'){
-                          containerWidth = $(window).outerWidth(true);
+                          containerWidth = angular.element(window).outerWidth(true);
                         }
 
                         // if (slides.length === 0) {
