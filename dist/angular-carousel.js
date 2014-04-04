@@ -1,6 +1,6 @@
 /**
  * Angular Carousel - Mobile friendly touch carousel for AngularJS
- * @version v0.2.2 - 2014-04-02
+ * @version v0.2.2 - 2014-04-04
  * @link http://revolunet.github.com/angular-carousel
  * @author Julien Bouquillon <julien@revolunet.com>
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -265,7 +265,7 @@ angular.module('angular-carousel')
                         }
 
                         if (containerWidth == 0 || typeof containerWidth == 'undefined'){
-                          containerWidth = angular.element(window).outerWidth(true);
+                          containerWidth = angular.element($window).outerWidth(true);
                         }
 
                         // if (slides.length === 0) {
@@ -360,6 +360,11 @@ angular.module('angular-carousel')
                         updateBufferIndex();
                         // if outside of angular scope, trigger angular digest cycle
                         // use local digest only for perfs if no index bound
+                        if (isIndexBound) {
+                            $rootScope.safeApply();
+                        } else {
+                            scope.$digest();
+                        }
                         scroll();
                     }
 
@@ -430,8 +435,12 @@ angular.module('angular-carousel')
 
                         $document.unbind('mouseup', documentMouseUpEvent);
                         pressed = false;
-
+                        swipeMoved = false;
                         destination = offset;
+
+                        if (scope.carouselIndex+1 >= slidesCount) {
+                            $rootScope.$emit('carousel:loadMore');
+                        }
 
                         var minMove = getAbsMoveTreshold(),
                             currentOffset = (scope.carouselIndex * containerWidth),
