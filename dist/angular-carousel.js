@@ -1,6 +1,6 @@
 /**
  * Angular Carousel - Mobile friendly touch carousel for AngularJS
- * @version v0.1.7 - 2014-02-03
+ * @version v0.2.2 - 2014-04-02
  * @link http://revolunet.github.com/angular-carousel
  * @author Julien Bouquillon <julien@revolunet.com>
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -34,6 +34,31 @@ angular.module('angular-carousel', [
 
 angular.module('angular-carousel')
 
+.directive('rnCarouselControls', [function() {
+  return {
+    restrict: 'A',
+    replace: true,
+    scope: {
+      items: '=',
+      index: '='
+    },
+    link: function(scope, element, attrs) {
+      scope.prev = function() {
+        scope.index--;
+      };
+      scope.next = function() {
+        scope.index++;
+      };
+    },
+    template: '<div class="rn-carousel-controls">' +
+                '<span class="rn-carousel-control rn-carousel-control-prev" ng-click="prev()" ng-if="index > 0"></span>' +
+                '<span class="rn-carousel-control rn-carousel-control-next" ng-click="next()" ng-if="index < items.length - 1"></span>' +
+              '</div>'
+  };
+}]);
+
+angular.module('angular-carousel')
+
 .directive('rnCarouselIndicators', [function() {
   return {
     restrict: 'A',
@@ -43,7 +68,7 @@ angular.module('angular-carousel')
       index: '='
     },
     template: '<div class="rn-carousel-indicator">' +
-                '<span ng-repeat="item in items" ng-click="$parent.index=$index" ng-class="{active: $index==$parent.index}">●</span>' +
+                '<span ng-repeat="item in items" ng-click="$parent.index=$index" ng-class="{active: $index==$parent.index}"></span>' +
               '</div>'
   };
 }]);
@@ -75,6 +100,8 @@ angular.module('angular-carousel')
             moveTreshold = 0.05,
             // in absolute pixels, at which distance the slide stick to the edge on release
             rubberTreshold = 3;
+
+        var requestAnimationFrame = $window.requestAnimationFrame || $window.webkitRequestAnimationFrame || $window.mozRequestAnimationFrame;
 
         return {
             restrict: 'A',
@@ -133,6 +160,7 @@ angular.module('angular-carousel')
                         offset = 0,
                         destination,
                         slidesCount = 0,
+                        swipeMoved = false,
                         // javascript based animation easing
                         timestamp;
 
@@ -140,8 +168,8 @@ angular.module('angular-carousel')
                     var carousel = iElement.wrap("<div id='carousel-" + carouselId +"' class='rn-carousel-container'></div>"),
                         container = carousel.parent();
 
-                    // enable carousel indicator
-                    if (angular.isDefined(iAttributes.rnCarouselIndicator)) {
+                    // if indicator or controls, setup the watch
+                    if (angular.isDefined(iAttributes.rnCarouselIndicator) || angular.isDefined(iAttributes.rnCarouselControl)) {
                         updateIndicatorArray();
                         scope.$watch('carouselIndex', function(newValue) {
                             scope.indicatorIndex = newValue;
@@ -149,8 +177,19 @@ angular.module('angular-carousel')
                         scope.$watch('indicatorIndex', function(newValue) {
                             goToSlide(newValue, true);
                         });
+
+                    }
+
+                    // enable carousel indicator
+                    if (angular.isDefined(iAttributes.rnCarouselIndicator)) {
                         var indicator = $compile("<div id='carousel-" + carouselId +"-indicator' index='indicatorIndex' items='carouselIndicatorArray' rn-carousel-indicators class='rn-carousel-indicator'></div>")(scope);
                         container.append(indicator);
+                    }
+
+                    // enable carousel controls
+                    if (angular.isDefined(iAttributes.rnCarouselControl)) {
+                        var controls = $compile("<div id='carousel-" + carouselId +"-controls' index='indicatorIndex' items='carouselIndicatorArray' rn-carousel-controls class='rn-carousel-controls'></div>")(scope);
+                        container.append(controls);
                     }
 
                     scope.carouselBufferIndex = 0;
@@ -159,18 +198,27 @@ angular.module('angular-carousel')
 
                     // handle index databinding
                     if (iAttributes.rnCarouselIndex) {
+                        var updateParentIndex = function(value) {
+                            indexModel.assign(scope.$parent, value);
+                        };
                         var indexModel = $parse(iAttributes.rnCarouselIndex);
                         if (angular.isFunction(indexModel.assign)) {
                             /* check if this property is assignable then watch it */
                             scope.$watch('carouselIndex', function(newValue) {
-                                indexModel.assign(scope.$parent, newValue);
+                                updateParentIndex(newValue);
                             });
                             scope.carouselIndex = indexModel(scope);
                             scope.$parent.$watch(indexModel, function(newValue, oldValue) {
-                              if (newValue!==undefined) {
-                                // todo: ensure valid
-                                goToSlide(newValue, true);
-                              }
+                                if (newValue!==undefined) {
+                                    if (newValue >= slidesCount) {
+                                        newValue = slidesCount - 1;
+                                        updateParentIndex(newValue);
+                                    } else if (newValue < 0) {
+                                        newValue = 0;
+                                        updateParentIndex(newValue);
+                                    }
+                                    goToSlide(newValue, true);
+                                }
                             });
                             isIndexBound = true;
                         } else if (!isNaN(iAttributes.rnCarouselIndex)) {
@@ -194,11 +242,12 @@ angular.module('angular-carousel')
                         });
                     } else {
                         slidesCount = iElement.children().length;
+                        updateIndicatorArray();
                         updateContainerWidth();
                     }
 
                     function updateIndicatorArray() {
-                        // generate an arrat to be used by the indicators
+                        // generate an array to be used by the indicators
                         var items = [];
                         for (var i = 0; i < slidesCount; i++) items[i] = i;
                         scope.carouselIndicatorArray = items;
@@ -225,18 +274,20 @@ angular.module('angular-carousel')
                         //     containerWidth = slides[0].getBoundingClientRect().width;
                         // }
                         // console.log('getCarouselWidth', containerWidth);
-                        return Math.floor(containerWidth);
+                        return containerWidth;
                     }
 
                     function updateContainerWidth() {
                         // force the carousel container width to match the first slide width
                         container.css('width', '100%');
-                        container.css('width', getCarouselWidth() + 'px');
+                        var width = getCarouselWidth();
+                        if (width) {
+                            container.css('width', width + 'px');
+                        }
                     }
 
                     function scroll(x) {
                         // use CSS 3D transform to move the carousel
-                        //console.log('scroll', x, 'index', scope.carouselIndex);
                         if (isNaN(x)) {
                             x = scope.carouselIndex * containerWidth;
                         }
@@ -244,7 +295,12 @@ angular.module('angular-carousel')
                         offset = x;
                         var move = -Math.round(offset);
                         move += (scope.carouselBufferIndex * containerWidth);
-                        carousel[0].style[transformProperty] = 'translate3d(' + move + 'px, 0, 0)';
+
+                        if(!is3dAvailable) {
+                            carousel[0].style[transformProperty] = 'translate(' + move + 'px, 0)';
+                        } else {
+                            carousel[0].style[transformProperty] = 'translate3d(' + move + 'px, 0, 0)';
+                        }
                     }
 
                     function autoScroll() {
@@ -257,6 +313,8 @@ angular.module('angular-carousel')
                             delta = amplitude * Math.exp(-elapsed / timeConstant);
                             if (delta > rubberTreshold || delta < -rubberTreshold) {
                                 scroll(destination - delta);
+                                /* We are using raf.js, a requestAnimationFrame polyfill, so
+                                this will work on IE9 */
                                 requestAnimationFrame(autoScroll);
                             } else {
                                 goToSlide(destination / containerWidth);
@@ -275,6 +333,8 @@ angular.module('angular-carousel')
                         var bufferEdgeSize = (scope.carouselBufferSize - 1) / 2;
                         if (isBuffered) {
                             if (scope.carouselIndex <= bufferEdgeSize) {
+                                bufferIndex = 0;
+                            } else if (slidesCount < scope.carouselBufferSize) {
                                 bufferIndex = 0;
                             } else if (scope.carouselIndex > slidesCount - scope.carouselBufferSize) {
                                 bufferIndex = slidesCount - scope.carouselBufferSize;
@@ -300,7 +360,6 @@ angular.module('angular-carousel')
                         updateBufferIndex();
                         // if outside of angular scope, trigger angular digest cycle
                         // use local digest only for perfs if no index bound
-                        $rootScope.safeApply();
                         scroll();
                     }
 
@@ -311,6 +370,7 @@ angular.module('angular-carousel')
 
                     function documentMouseUpEvent(event) {
                         // in case we click outside the carousel, trigger a fake swipeEnd
+                        swipeMoved = true;
                         swipeEnd({
                             x: event.clientX,
                             y: event.clientY
@@ -337,8 +397,6 @@ angular.module('angular-carousel')
                         amplitude = 0;
                         timestamp = Date.now();
 
-                        event.preventDefault();
-                        event.stopPropagation();
                         return false;
                     }
 
@@ -349,24 +407,29 @@ angular.module('angular-carousel')
                             x = coords.x;
                             delta = startX - x;
                             if (delta > 2 || delta < -2) {
+                                swipeMoved = true;
                                 startX = x;
+
+                                /* We are using raf.js, a requestAnimationFrame polyfill, so
+                                this will work on IE9 */
                                 requestAnimationFrame(function() {
                                     scroll(capPosition(offset + delta));
                                 });
                             }
                         }
-                        event.preventDefault();
-                        event.stopPropagation();
                         return false;
                     }
 
                     function swipeEnd(coords, event, forceAnimation) {
                         //console.log('swipeEnd', 'scope.carouselIndex', scope.carouselIndex);
+
+                        // Prevent clicks on buttons inside slider to trigger "swipeEnd" event on touchend/mouseup
+                        if(event && !swipeMoved) {
+                            return;
+                        }
+
                         $document.unbind('mouseup', documentMouseUpEvent);
                         pressed = false;
-                        if (scope.carouselIndex+1 >= slidesCount) {
-                            $rootScope.$emit('carousel:loadMore');
-                        }
 
                         destination = offset;
 
@@ -390,21 +453,27 @@ angular.module('angular-carousel')
                         if (forceAnimation) {
                             amplitude = offset - currentOffset;
                         }
+                        /* We are using raf.js, a requestAnimationFrame polyfill, so
+                        this will work on IE9 */
                         requestAnimationFrame(autoScroll);
 
-                        if (event) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                        }
                         return false;
                     }
 
-                    $swipe.bind(carousel, {
-                        start: swipeStart,
-                        move: swipeMove,
-                        end: swipeEnd,
-                        cancel: function(event) {
-                          swipeEnd({}, event);
+                    iAttributes.$observe('rnCarouselSwipe', function(newValue, oldValue) {
+                        // only bind swipe when it's not switched off
+                        if(newValue !== 'false' && newValue !== 'off') {
+                            $swipe.bind(carousel, {
+                                start: swipeStart,
+                                move: swipeMove,
+                                end: swipeEnd,
+                                cancel: function(event) {
+                                  swipeEnd({}, event);
+                                }
+                            });
+                        } else {
+                            // unbind swipe when it's switched off
+                            carousel.unbind();
                         }
                     });
 
@@ -424,6 +493,31 @@ angular.module('angular-carousel')
                         }
                         return true;
                     });
+
+                    //Detect support of translate3d
+                    function detect3dSupport(){
+                        var el = document.createElement('p'),
+                        has3d,
+                        transforms = {
+                            'webkitTransform':'-webkit-transform',
+                            'OTransform':'-o-transform',
+                            'msTransform':'-ms-transform',
+                            'MozTransform':'-moz-transform',
+                            'transform':'transform'
+                        };
+                        // Add it to the body to get the computed style
+                        document.body.insertBefore(el, null);
+                        for(var t in transforms){
+                            if( el.style[t] !== undefined ){
+                                el.style[t] = 'translate3d(1px,1px,1px)';
+                                has3d = window.getComputedStyle(el).getPropertyValue(transforms[t]);
+                            }
+                        }
+                        document.body.removeChild(el);
+                        return (has3d !== undefined && has3d.length > 0 && has3d !== "none");
+                    }
+
+                    var is3dAvailable = detect3dSupport();
 
                     function onOrientationChange() {
                         updateContainerWidth();

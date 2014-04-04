@@ -6,6 +6,8 @@ var path = require('path');
 
 module.exports = function(grunt) {
 
+  require('load-grunt-tasks')(grunt);
+
   // Project configuration.
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
@@ -36,10 +38,10 @@ module.exports = function(grunt) {
     },
     autoprefixer: {
       source: {
-        options: {
-          //browsers: ['last 2 version', '> 1%', 'android', 'chrome', 'firefox']
-        },
-        src: '<%= dirs.src %>/css/<%= pkg.name %>.css',
+        //options: {
+          //browsers: ['last 2 version']
+        //},
+        src: '<%= dirs.dest %>/<%= pkg.name %>.css',
         dest: '<%= dirs.dest %>/<%= pkg.name %>.css'
       }
     },
@@ -52,6 +54,19 @@ module.exports = function(grunt) {
         dest: '<%= dirs.dest %>/<%= pkg.name %>.js'
       }
     },
+
+    sass: {
+      dist: {
+        files: [{
+          expand: true,
+          cwd: './src/css',
+          src: ['*.scss'],
+          dest: './dist',
+          ext: '.css'
+        }]
+      }
+    },
+
     cssmin: {
       combine: {
         files: {
@@ -59,6 +74,7 @@ module.exports = function(grunt) {
         }
       }
     },
+
     uglify: {
       options: {
         banner: '<%= meta.banner %>'
@@ -105,6 +121,11 @@ module.exports = function(grunt) {
           singleRun: true
       }
     },
+    changelog: {
+      options: {
+        dest: 'CHANGELOG.md'
+      }
+    },
     watch: {
       dev: {
         files: ['<%= dirs.src %>/**'],
@@ -114,22 +135,11 @@ module.exports = function(grunt) {
         files: ['test/unit/**'],
         tasks: ['karma:unit:run']
       }
-
     }
   });
 
-  grunt.loadNpmTasks('grunt-autoprefixer');
-  grunt.loadNpmTasks('grunt-contrib-copy');
-  grunt.loadNpmTasks('grunt-contrib-jshint');
-  grunt.loadNpmTasks('grunt-contrib-concat');
-  grunt.loadNpmTasks('grunt-contrib-uglify');
-  grunt.loadNpmTasks('grunt-contrib-cssmin');
-  grunt.loadNpmTasks('grunt-contrib-connect');
-  grunt.loadNpmTasks('grunt-contrib-watch');
-  grunt.loadNpmTasks('grunt-karma');
-
   // Build task.
-  grunt.registerTask('build', ['jshint', 'concat', 'uglify', 'autoprefixer', 'cssmin']);
+  grunt.registerTask('build', ['jshint', 'concat', 'uglify', 'sass', 'autoprefixer', 'cssmin']);
 
   // Default task.
   grunt.registerTask('default', ['build', 'connect', 'karma:unit', 'watch']);
