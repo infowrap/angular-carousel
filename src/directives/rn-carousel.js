@@ -128,6 +128,16 @@
 
             var requestAnimationFrame = $window.requestAnimationFrame || $window.webkitRequestAnimationFrame || $window.mozRequestAnimationFrame;
 
+            // helps with full screen width detection
+            var ua = $window.navigator.userAgent.toLowerCase();
+            var IS_LEGACY_ANDROID = false;
+            if (ua.match(/android/i)) {
+                var types = ua.match(/android ([\d\.]+)/)[1].split(".");
+                if (types) {
+                    IS_LEGACY_ANDROID = Number(types[0]) < 4;
+                }
+            }
+
             function getItemIndex(collection, target, defaultIndex) {
                 var result = defaultIndex;
                 collection.every(function(item, index) {
@@ -307,8 +317,18 @@
                         }
 
                         function getContainerWidth() {
-                            var rect = iElement[0].getBoundingClientRect();
-                            return rect.width ? rect.width : rect.right - rect.left;
+                            var containerWidth = 0;
+                            if (IS_LEGACY_ANDROID) {
+                                containerWidth = document.width;
+                            }
+
+                            if (containerWidth == 0 || typeof containerWidth == 'undefined'){
+                              containerWidth = angular.element($window).outerWidth(true);
+                            }
+
+                            // var rect = iElement[0].getBoundingClientRect();
+                            // return rect.width ? rect.width : rect.right - rect.left;
+                            return containerWidth;
                         }
 
                         function updateContainerWidth() {
