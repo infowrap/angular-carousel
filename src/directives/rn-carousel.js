@@ -304,7 +304,15 @@
                                     updateSlidesPosition(state.x);
                                 },
                                 finish: function() {
-                                    scope.$apply(function() {
+                                    // scope.$apply(function() {
+                                    //     scope.carouselIndex = index;
+                                    //     offset = index * -100;
+                                    //     updateBufferIndex();
+                                    //     $timeout(function () {
+                                    //       locked = false;
+                                    //     }, 0, false);
+                                    // });
+                                    $rootScope.safeApply(function() {
                                         scope.carouselIndex = index;
                                         offset = index * -100;
                                         updateBufferIndex();
@@ -523,7 +531,9 @@
 
                                 destination = (scope.carouselIndex + moveOffset);
 
-                                goToSlide(destination);
+                                $rootScope.safeApply(function() {
+                                    goToSlide(destination);
+                                });
                             } else {
                                 // scope.$apply(function() {
                                 //     scope.carouselIndex = parseInt(-offset / 100, 10);
