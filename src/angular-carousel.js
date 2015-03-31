@@ -7,7 +7,8 @@ http://github.com/revolunet/angular-carousel
 */
 
 angular.module('angular-carousel', [
-    'ngTouch'
+    'ngTouch',
+    'angular-carousel.shifty'
 ]).config(['$provide', function($provide) {
   $provide.decorator('$rootScope', ['$delegate', function($delegate) {
     $delegate.safeApply = function(fn) {
