@@ -1,6 +1,6 @@
 /**
  * Angular Carousel - Mobile friendly touch carousel for AngularJS
- * @version v0.3.10 - 2015-02-11
+ * @version v0.3.10 - 2015-03-31
  * @link http://revolunet.github.com/angular-carousel
  * @author Julien Bouquillon <julien@revolunet.com>
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -213,8 +213,8 @@ angular.module('angular-carousel').run(['$templateCache', function($templateCach
         };
     })
 
-    .directive('rnCarousel', ['$swipe', '$window', '$document', '$parse', '$compile', '$timeout', '$interval', 'computeCarouselSlideStyle', 'createStyleString', 'Tweenable',
-        function($swipe, $window, $document, $parse, $compile, $timeout, $interval, computeCarouselSlideStyle, createStyleString, Tweenable) {
+    .directive('rnCarousel', ['$swipe', '$window', '$document', '$parse', '$compile', '$timeout', '$interval', '$rootScope', 'computeCarouselSlideStyle', 'createStyleString', 'Tweenable',
+        function($swipe, $window, $document, $parse, $compile, $timeout, $interval, $rootScope, computeCarouselSlideStyle, createStyleString, Tweenable) {
             // internal ids to allow multiple instances
             var carouselId = 0,
                 // in absolute pixels, at which distance the slide stick to the edge on release
@@ -500,7 +500,7 @@ angular.module('angular-carousel').run(['$templateCache', function($templateCach
                                 scope.$parent.$watch(indexModel, function(newValue, oldValue) {
 
                                     if (newValue !== undefined && newValue !== null) {
-                                        if (currentSlides && newValue >= currentSlides.length) {
+                                        if (currentSlides && currentSlides.length > 0 && newValue >= currentSlides.length) {
                                             newValue = currentSlides.length - 1;
                                             updateParentIndex(newValue);
                                         } else if (currentSlides && newValue < 0) {
@@ -569,6 +569,11 @@ angular.module('angular-carousel').run(['$templateCache', function($templateCach
                             pressed = false;
                             swipeMoved = false;
                             destination = startX - coords.x;
+
+                            if (scope.carouselIndex+1 >= currentSlides.length) {
+                                $rootScope.$emit('carousel:loadMore');
+                            }
+
                             if (destination===0) {
                                 return;
                             }
@@ -594,10 +599,15 @@ angular.module('angular-carousel').run(['$templateCache', function($templateCach
 
                                 goToSlide(destination);
                             } else {
-                                scope.$apply(function() {
+                                // scope.$apply(function() {
+                                //     scope.carouselIndex = parseInt(-offset / 100, 10);
+                                //     updateBufferIndex();
+                                // });
+                                $rootScope.safeApply(function() {
                                     scope.carouselIndex = parseInt(-offset / 100, 10);
                                     updateBufferIndex();
                                 });
+
                             }
 
                         }
